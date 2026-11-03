@@ -10,7 +10,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -18,6 +18,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK Licenses
+        run: yes | sdkmanager --licenses || true
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -30,8 +36,9 @@ jobs:
             dir=.
           else
             zip=$(ls *.zip 2>/dev/null | sort -V | tail -1)
-            if [ -z "$zip" ]; then echo "::error::No project or zip found"; exit 1; fi
-            mkdir -p _src && unzip -q -o "$zip" -d _src
+            if [ -z "$zip" ]; then echo "::error::저장소에 .zip 파일이 없습니다"; exit 1; fi
+            echo "Found zip: $zip"
+            rm -rf _src && mkdir -p _src && unzip -q -o "$zip" -d _src
             dir=$(dirname "$(find _src -name settings.gradle -not -path '*/build/*' | head -1)")
           fi
           rm -f "$dir/local.properties"
@@ -39,7 +46,7 @@ jobs:
 
       - name: Assemble Debug APK
         working-directory: ${{ steps.proj.outputs.dir }}
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon assembleDebug --stacktrace
 
       - name: Package APK
         id: apk
